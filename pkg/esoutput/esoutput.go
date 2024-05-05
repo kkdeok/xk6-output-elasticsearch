@@ -31,7 +31,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -49,7 +48,7 @@ type elasticMetricEntry struct {
 	MetricType string
 	Value      float64
 	Tags       map[string]string
-	Time       time.Time
+	Time       time.Time `json:"@timestamp"`
 }
 
 type Output struct {
@@ -156,6 +155,7 @@ func New(params output.Params) (output.Output, error) {
 			// this happens usually due to permission issues
 			params.Logger.Errorf("Could not write metrics: %s", err)
 		},
+		FlushInterval: defaultFlushPeriod,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating the indexer: %v", err)
@@ -175,19 +175,19 @@ func (*Output) Description() string {
 
 func (o *Output) Start() error {
 	indexName := o.config.IndexName.String
-	res, err := o.client.Indices.Create(indexName, o.client.Indices.Create.WithBody(bytes.NewReader(mapping)))
-	if err != nil {
-		return err
-	}
-	// 400 usually happens when the index already exists, which is ok for our purposes.
-	if res.StatusCode > 400 {
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("could not read response after failure to create index %s: %v", indexName, err)
-		}
-		return fmt.Errorf("could not create index %s: %s", indexName, body)
-	}
-	res.Body.Close()
+	//res, err := o.client.Indices.Create(indexName, o.client.Indices.Create.WithBody(bytes.NewReader(mapping)))
+	//if err != nil {
+	//	return err
+	//}
+	//// 400 usually happens when the index already exists, which is ok for our purposes.
+	//if res.StatusCode > 400 {
+	//	body, err := io.ReadAll(res.Body)
+	//	if err != nil {
+	//		return fmt.Errorf("could not read response after failure to create index %s: %v", indexName, err)
+	//	}
+	//	return fmt.Errorf("could not create index %s: %s", indexName, body)
+	//}
+	//res.Body.Close()
 
 	if periodicFlusher, err := output.NewPeriodicFlusher(time.Duration(o.config.FlushPeriod.Duration), o.flush); err != nil {
 		return err
